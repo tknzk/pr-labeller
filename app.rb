@@ -109,8 +109,10 @@ post '/' do
       files.concat(filelist)
     end
 
+    # extract changes files.
     migrations = files.find {|v| v unless v.match(/db\/migrate\/*/).nil? }
     envs = files.find {|v| v unless v.match(/.env\.[development|test]/).nil? }
+    onetimes = files.find {|v| v unless v.match(/script\/onetime\/*/).nil? }
 
   end
 end
