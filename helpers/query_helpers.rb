@@ -8,6 +8,36 @@ module QueryHelper
     GithubApi::V4::Client.new(ENV['GITHUB_ACCESS_TOKEN'])
   end
 
+  def retrieve_files_from_pr(pr_number:, owner:, repo:)
+    per_page = 100
+    options = {
+      pr_number: pr_number,
+      per_page: per_page,
+      owner: owner,
+      repo: repo
+    }
+
+    files = []
+
+    total = github_client.graphql(query: init_query(options))
+
+    total_count = total['data']['repository']['pullRequest']['files']['totalCount']
+    end_cursor = total['data']['repository']['pullRequest']['files']['pageInfo']['endCursor']
+    page = (total_count / per_page.to_f).ceil
+
+    files << total['data']['repository']['pullRequest']['files']['edges'][0]['node']['path']
+
+    i = 0
+    while i < page
+      options[:endCursor] = end_cursor
+      end_cursor, filelist = exec_query(list_query(options))
+      files.concat(filelist)
+      i += 1
+    end
+
+    files
+  end
+
   def list_query(options)
     <<~QUERY
       {
