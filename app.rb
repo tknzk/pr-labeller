@@ -3,28 +3,28 @@
 require 'rubygems'
 require 'sinatra'
 require 'sinatra/json'
-require 'sinatra/json'
 require 'sinatra/config_file'
 require 'github_api/v4/client'
 require './helpers/query_helpers.rb'
+
+require 'pry'
 
 config_file 'config/config.yml'
 helpers QueryHelper
 
 post '/' do
-  event = request.env['X-GitHub-Event']
+  event = request.env['HTTP_X_GITHUB_EVENT']
   unless event == 'pull_request'
     msg = { message: 'event is not pull_request.' }
     json msg
     return
   end
 
-  body = request.body.read
-  params = JSON.parse(body)
+  payload = JSON.parse(params['payload'])
 
-  if params['action'] == 'opened'
-    pr_number = params['issue']['number']
-    owner, repo = params['repository']['full_name'].split('/')
+  if payload['action'] == 'opened'
+    pr_number = payload['number']
+    owner, repo = payload['repository']['full_name'].split('/')
 
     change_files = retrieve_files_from_pr(pr_number: pr_number, owner: owner, repo: repo)
 
@@ -35,6 +35,9 @@ post '/' do
       regex = Regexp.new(labels[label])
       targets[label] = change_files.select { |v| v unless v.match(regex).nil? }
     end
+
+    # base_branch = payload['pull_request']['base']['ref']
+
     puts targets
 
   else
