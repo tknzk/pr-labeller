@@ -5,6 +5,7 @@ require 'sinatra'
 require 'sinatra/json'
 require 'sinatra/config_file'
 require 'github_api/v4/client'
+require 'octokit'
 require './helpers/query_helpers.rb'
 
 require 'pry'
@@ -24,7 +25,8 @@ post '/' do
 
   if payload['action'] == 'opened'
     pr_number = payload['number']
-    owner, repo = payload['repository']['full_name'].split('/')
+    full_repo = payload['repository']['full_name']
+    owner, repo = full_repo.split('/')
 
     change_files = retrieve_files_from_pr(pr_number: pr_number, owner: owner, repo: repo)
 
@@ -36,10 +38,14 @@ post '/' do
       targets[label] = change_files.select { |v| v unless v.match(regex).nil? }
     end
 
-    # base_branch = payload['pull_request']['base']['ref']
+    # add labels, comments
+    octokit = Octokit::Client.new(access_token: ENV['GITHUB_ACCESS_TOKEN'])
 
-    puts targets
+    labels = targets.select { |k, v| k unless v.empty? }.keys
+    comments = targets.select { |k, v| k unless v.empty? }.values
 
+    octokit.add_labels_to_an_issue(full_repo, pr_number, labels) unless labels.empty?
+    octokit.add_comment(full_repo, pr_number, comments.join("\n")) unless comments.empty?
   else
     msg = { message: 'action is not opened.' }
     json msg
