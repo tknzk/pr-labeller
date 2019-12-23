@@ -2,6 +2,9 @@
 
 require 'rubygems'
 require 'sinatra'
+require 'dotenv'
+
+Dotenv.load('.env')
 
 require './app.rb'
 
