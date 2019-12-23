@@ -7,6 +7,7 @@ require 'sinatra/config_file'
 require 'github_api/v4/client'
 require 'octokit'
 require './helpers/query_helpers.rb'
+require './lib/webhook_signature.rb'
 
 require 'pry'
 
@@ -22,6 +23,21 @@ post '/' do
   end
 
   payload = JSON.parse(params['payload'])
+
+  # webhook signature
+  github_webhook_secret = ENV['GITHUB_WEBHOOK_SECRET']
+  if github_webhook_secret
+    http_x_hub_signature = request.env['HTTP_X_HUB_SIGNATURE']
+    payload_body = request.body.read
+    signature = WebhookSignature.new(secret: github_webhook_secret,
+                                     http_x_hub_signature: http_x_hub_signature,
+                                     payload_body: payload_body)
+    if signature.invalid?
+      msg = { message: 'webhook signature is invalid.' }
+      json msg
+      return
+    end
+  end
 
   if payload['action'] == 'opened'
     pr_number = payload['number']
